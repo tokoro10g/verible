@@ -117,13 +117,7 @@ static bool IgnoreWithinPortDeclarationPartitionGroup(
   const auto token_range = uwline.TokensRange();
   CHECK(!token_range.empty());
   if (IgnoreCommentsAndPreprocessingDirectives(partition)) return true;
-
-  // Ignore .x or .x(x) port declarations.
-  // These can appear in a list_of_port_or_port_declarations.
-  CHECK_NOTNULL(uwline.Origin());
-  return uwline.Origin()->Kind() == verible::SymbolKind::kNode &&
-         verible::SymbolCastToNode(*uwline.Origin())
-             .MatchesTag(NodeEnum::kPort);
+  return false;
 }
 
 static bool IgnoreWithinStructUnionMemberPartitionGroup(
@@ -425,6 +419,12 @@ class PortDeclarationColumnSchemaScanner : public VerilogColumnSchemaScanner {
             Context().DirectParentsAre(
                 {NodeEnum::kDataTypeImplicitBasicIdDimensions,
                  NodeEnum::kPortItem})) {
+          ReserveNewColumn(node, FlushLeft);
+        } else if (Context().DirectParentsAre(
+                       {NodeEnum::kPortReference, NodeEnum::kPort})) {
+          // force alignment with previous port name declaration
+          const ValueSaver<SyntaxTreePath> path_saver(&current_path_,
+                                                      SyntaxTreePath{3});
           ReserveNewColumn(node, FlushLeft);
         }
         break;
